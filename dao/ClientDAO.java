@@ -23,6 +23,7 @@ public class ClientDAO {
 
         } catch (SQLException e) {
             System.err.println("Error fetching clients: " + e.getMessage());
+            e.printStackTrace();
         }
 
         return clients;
@@ -52,9 +53,17 @@ public class ClientDAO {
             stmt.setString(10, client.getIndicateur());
             stmt.setString(11, client.getRecetteImpots());
             stmt.setString(12, client.getObservation());
-            stmt.setObject(13, client.getSource(), Types.INTEGER);
+            if (client.getSource() != null) {
+                stmt.setInt(13, client.getSource());
+            } else {
+                stmt.setNull(13, Types.INTEGER);
+            }
             stmt.setString(14, client.getHonorairesMois());
-            stmt.setObject(15, client.getMontant(), Types.DECIMAL);
+            if (client.getMontant() != null) {
+                stmt.setBigDecimal(15, BigDecimal.valueOf(client.getMontant()));
+            } else {
+                stmt.setNull(15, Types.DECIMAL);
+            }
             stmt.setString(16, client.getPhone());
             stmt.setString(17, client.getEmail());
             stmt.setString(18, client.getCompany());
@@ -78,6 +87,7 @@ public class ClientDAO {
 
         } catch (SQLException e) {
             System.err.println("Error inserting client: " + e.getMessage());
+            e.printStackTrace();
             return -1; // Return -1 to indicate failure
         }
     }
@@ -105,9 +115,17 @@ public class ClientDAO {
             stmt.setString(10, client.getIndicateur());
             stmt.setString(11, client.getRecetteImpots());
             stmt.setString(12, client.getObservation());
-            stmt.setObject(13, client.getSource(), Types.INTEGER);
+            if (client.getSource() != null) {
+                stmt.setInt(13, client.getSource());
+            } else {
+                stmt.setNull(13, Types.INTEGER);
+            }
             stmt.setString(14, client.getHonorairesMois());
-            stmt.setObject(15, client.getMontant(), Types.DECIMAL);
+            if (client.getMontant() != null) {
+                stmt.setBigDecimal(15, BigDecimal.valueOf(client.getMontant()));
+            } else {
+                stmt.setNull(15, Types.DECIMAL);
+            }
             stmt.setString(16, client.getPhone());
             stmt.setString(17, client.getEmail());
             stmt.setString(18, client.getCompany());
@@ -120,6 +138,7 @@ public class ClientDAO {
 
         } catch (SQLException e) {
             System.err.println("Error updating client: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -136,6 +155,7 @@ public class ClientDAO {
 
         } catch (SQLException e) {
             System.err.println("Error deleting client: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -157,6 +177,7 @@ public class ClientDAO {
             
         } catch (SQLException e) {
             System.err.println("Error fetching client by ID: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return null;
@@ -183,6 +204,7 @@ public class ClientDAO {
 
         } catch (SQLException e) {
             System.err.println("Error searching clients: " + e.getMessage());
+            e.printStackTrace();
         }
 
         return clients;
@@ -204,11 +226,24 @@ public class ClientDAO {
         client.setIndicateur(rs.getString("indicateur"));
         client.setRecetteImpots(rs.getString("recette_impots"));
         client.setObservation(rs.getString("observation"));
-        client.setSource(rs.getObject("source") != null ? rs.getInt("source") : null);
+        
+        // Handle source field properly
+        int sourceValue = rs.getInt("source");
+        if (!rs.wasNull()) {
+            client.setSource(sourceValue);
+        } else {
+            client.setSource(null);
+        }
+        
         client.setHonorairesMois(rs.getString("honoraires_mois"));
         
+        // Handle montant field properly
         BigDecimal montantBD = rs.getBigDecimal("montant");
-        client.setMontant(montantBD != null ? montantBD.doubleValue() : null);
+        if (montantBD != null) {
+            client.setMontant(montantBD.doubleValue());
+        } else {
+            client.setMontant(null);
+        }
         
         client.setPhone(rs.getString("phone"));
         client.setEmail(rs.getString("email"));
@@ -216,8 +251,17 @@ public class ClientDAO {
         client.setAddress(rs.getString("address"));
         client.setType(rs.getString("type"));
         client.setPremierVersement(rs.getString("premier_versement"));
-        client.setCreatedAt(rs.getString("created_at"));
-        client.setUpdatedAt(rs.getString("updated_at"));
+        
+        // Handle timestamp fields
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            client.setCreatedAt(createdAt.toString());
+        }
+        
+        Timestamp updatedAt = rs.getTimestamp("updated_at");
+        if (updatedAt != null) {
+            client.setUpdatedAt(updatedAt.toString());
+        }
         
         return client;
     }

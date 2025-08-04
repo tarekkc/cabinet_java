@@ -9,8 +9,6 @@ public class DatabaseConnection {
     private static final String USER = "root";
     private static final String PASSWORD = ""; // or "root" if you set one
 
-    private static Connection connection = null;
-
     // Static block to load driver once
     static {
         try {
@@ -24,23 +22,30 @@ public class DatabaseConnection {
 
     // Method to get a connection
     public static Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+        try {
+            Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
             System.out.println("Connected to MySQL database.");
+            return connection;
+        } catch (SQLException e) {
+            System.err.println("Failed to connect to database: " + e.getMessage());
+            throw e;
         }
-        return connection;
     }
 
-    // Optional: method to close the connection
-    public static void closeConnection() {
+    // Test connection method
+    public static boolean testConnection() {
         try {
+            Connection connection = getConnection();
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                System.out.println("MySQL connection closed.");
+                System.out.println("Database connection test successful.");
+                return true;
             }
         } catch (SQLException e) {
+            System.err.println("Database connection test failed: " + e.getMessage());
             e.printStackTrace();
         }
+        return false;
     }
 }
 

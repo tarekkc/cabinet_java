@@ -136,10 +136,10 @@ public class ClientForm extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 20, 10));
 
-        JButton addButton = createButton("Ajouter", "icons/add.png", e -> showAddDialog());
-        JButton editButton = createButton("Modifier", "icons/edit.png", e -> showEditDialog());
-        JButton deleteButton = createButton("Supprimer", "icons/delete.png", e -> deleteClient());
-        JButton refreshButton = createButton("Actualiser", "icons/refresh.png", e -> refreshClientTable());
+        JButton addButton = createButton("Ajouter", e -> showAddDialog());
+        JButton editButton = createButton("Modifier", e -> showEditDialog());
+        JButton deleteButton = createButton("Supprimer", e -> deleteClient());
+        JButton refreshButton = createButton("Actualiser", e -> refreshClientTable());
 
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
@@ -148,8 +148,8 @@ public class ClientForm extends JFrame {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private JButton createButton(String text, String iconPath, ActionListener listener) {
-        JButton button = new JButton(text, new ImageIcon(iconPath));
+    private JButton createButton(String text, ActionListener listener) {
+        JButton button = new JButton(text);
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
         button.setPreferredSize(new Dimension(150, 40));
         button.addActionListener(listener);
@@ -160,11 +160,22 @@ public class ClientForm extends JFrame {
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() {
-                List<Client> clients = controller.fetchAllClients();
-                tableModel.setRowCount(0); // Clear table
-                
-                for (Client c : clients) {
-                    tableModel.addRow(convertClientToRow(c));
+                try {
+                    List<Client> clients = controller.fetchAllClients();
+                    SwingUtilities.invokeLater(() -> {
+                        tableModel.setRowCount(0); // Clear table
+                        for (Client c : clients) {
+                            tableModel.addRow(convertClientToRow(c));
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(ClientForm.this, 
+                            "Erreur lors du chargement des données: " + e.getMessage(), 
+                            "Erreur", 
+                            JOptionPane.ERROR_MESSAGE);
+                    });
                 }
                 return null;
             }
@@ -210,11 +221,17 @@ public class ClientForm extends JFrame {
         dialog.setVisible(true);
         if (dialog.isConfirmed()) {
             Client newClient = dialog.getClient();
-            if (controller.addClient(newClient)) {
-                refreshClientTable();
-                JOptionPane.showMessageDialog(this, "Client ajouté avec succès!");
-            } else {
-                JOptionPane.showMessageDialog(this, "Erreur lors de l'ajout", "Erreur", JOptionPane.ERROR_MESSAGE);
+            try {
+                int result = controller.addClient(newClient);
+                if (result > 0) {
+                    refreshClientTable();
+                    JOptionPane.showMessageDialog(this, "Client ajouté avec succès! ID: " + result);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Erreur lors de l'ajout du client", "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Erreur lors de l'ajout: " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -226,22 +243,29 @@ public class ClientForm extends JFrame {
             return;
         }
 
-        int modelRow = clientTable.convertRowIndexToModel(selectedRow);
-        int clientId = (Integer) tableModel.getValueAt(modelRow, 0);
-        Client clientToEdit = controller.getClientById(clientId);
+        try {
+            int modelRow = clientTable.convertRowIndexToModel(selectedRow);
+            int clientId = (Integer) tableModel.getValueAt(modelRow, 0);
+            Client clientToEdit = controller.getClientById(clientId);
 
-        if (clientToEdit != null) {
-            ClientDialog dialog = new ClientDialog(this, "Modifier Client", clientToEdit);
-            dialog.setVisible(true);
-            if (dialog.isConfirmed()) {
-                Client updatedClient = dialog.getClient();
-                if (controller.updateClient(updatedClient)) {
-                    refreshClientTable();
-                    JOptionPane.showMessageDialog(this, "Client modifié avec succès!");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Erreur lors de la modification", "Erreur", JOptionPane.ERROR_MESSAGE);
+            if (clientToEdit != null) {
+                ClientDialog dialog = new ClientDialog(this, "Modifier Client", clientToEdit);
+                dialog.setVisible(true);
+                if (dialog.isConfirmed()) {
+                    Client updatedClient = dialog.getClient();
+                    if (controller.updateClient(updatedClient)) {
+                        refreshClientTable();
+                        JOptionPane.showMessageDialog(this, "Client modifié avec succès!");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Erreur lors de la modification", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
+            } else {
+                JOptionPane.showMessageDialog(this, "Client non trouvé", "Erreur", JOptionPane.ERROR_MESSAGE);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Erreur lors de la modification: " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -254,20 +278,26 @@ public class ClientForm extends JFrame {
 
         int confirm = JOptionPane.showConfirmDialog(
             this, 
-            "Êtes-vous sûr de vouloir supprimer ce client?", 
+            "Êtes-vous sûr de vouloir supprimer ce client?\nCette action supprimera également tous ses versements.", 
             "Confirmation", 
-            JOptionPane.YES_NO_OPTION
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            int modelRow = clientTable.convertRowIndexToModel(selectedRow);
-            int clientId = (Integer) tableModel.getValueAt(modelRow, 0);
-            
-            if (controller.deleteClient(clientId)) {
-                tableModel.removeRow(modelRow);
-                JOptionPane.showMessageDialog(this, "Client supprimé avec succès!");
-            } else {
-                JOptionPane.showMessageDialog(this, "Erreur lors de la suppression", "Erreur", JOptionPane.ERROR_MESSAGE);
+            try {
+                int modelRow = clientTable.convertRowIndexToModel(selectedRow);
+                int clientId = (Integer) tableModel.getValueAt(modelRow, 0);
+                
+                if (controller.deleteClient(clientId)) {
+                    refreshClientTable();
+                    JOptionPane.showMessageDialog(this, "Client supprimé avec succès!");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Erreur lors de la suppression", "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Erreur lors de la suppression: " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
             }
         }
     }

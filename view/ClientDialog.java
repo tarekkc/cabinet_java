@@ -132,11 +132,148 @@ public class ClientDialog extends JDialog {
     }
 
     private void validateAndClose() {
-        if (nomField.getText().trim().isEmpty() || activiteField.getText().trim().isEmpty()) {
+        // Validate required fields
+        String nom = nomField.getText().trim();
+        String activite = activiteField.getText().trim();
+        
+        if (nom.isEmpty()) {
             JOptionPane.showMessageDialog(this, 
-                "Les champs 'Nom' et 'Activité' sont obligatoires", 
+                "Le champ 'Nom' est obligatoire", 
                 "Validation", 
                 JOptionPane.WARNING_MESSAGE);
+            nomField.requestFocus();
+            return;
+        }
+        
+        if (activite.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Le champ 'Activité' est obligatoire", 
+                "Validation", 
+                JOptionPane.WARNING_MESSAGE);
+            activiteField.requestFocus();
+            return;
+        }
+        
+        // Validate email format if provided
+        String email = emailField.getText().trim();
+        if (!email.isEmpty() && !isValidEmail(email)) {
+            JOptionPane.showMessageDialog(this, 
+                "Format d'email invalide", 
+                "Validation", 
+                JOptionPane.WARNING_MESSAGE);
+            emailField.requestFocus();
+            return;
+        }
+        
+        // Validate montant format if provided
+        String montantText = montantField.getText().trim();
+        if (!montantText.isEmpty()) {
+            try {
+                Double.parseDouble(montantText);
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Format de montant invalide", 
+                    "Validation", 
+                    JOptionPane.WARNING_MESSAGE);
+                montantField.requestFocus();
+                return;
+            }
+        }
+        
+        // Validate source format if provided
+        String sourceText = sourceField.getText().trim();
+        if (!sourceText.isEmpty()) {
+            try {
+                Integer.parseInt(sourceText);
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, 
+                    "La source doit être un nombre entier", 
+                    "Validation", 
+                    JOptionPane.WARNING_MESSAGE);
+                sourceField.requestFocus();
+                return;
+            }
+        }
+
+        confirmed = true;
+        dispose();
+    }
+    
+    private boolean isValidEmail(String email) {
+        return email.matches("^[A-Za-z0-9+_.-]+@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})$");
+    }
+
+    public boolean isConfirmed() {
+        return confirmed;
+    }
+
+    public Client getClient() {
+        if (!confirmed) return null;
+
+        Client c = client != null ? client : new Client();
+        
+        // Set basic information
+        c.setNom(nomField.getText().trim());
+        c.setPrenom(prenomField.getText().trim());
+        c.setActivite(activiteField.getText().trim());
+        c.setAnnee(anneeField.getText().trim());
+        c.setAgentResponsable(agentField.getText().trim());
+        c.setFormeJuridique(formeJuridiqueField.getText().trim());
+        c.setRegimeFiscal(regimeFiscalField.getText().trim());
+        c.setRegimeCnas(regimeCnasField.getText().trim());
+        c.setModePaiement(modePaiementField.getText().trim());
+        c.setIndicateur(indicateurField.getText().trim());
+        c.setRecetteImpots(recetteImpotsField.getText().trim());
+        c.setObservation(observationField.getText().trim());
+        
+        // Handle source field
+        String sourceText = sourceField.getText().trim();
+        if (!sourceText.isEmpty()) {
+            try {
+                c.setSource(Integer.parseInt(sourceText));
+            } catch (NumberFormatException e) {
+                c.setSource(null);
+            }
+        } else {
+            c.setSource(null);
+        }
+        
+        c.setHonorairesMois(honorairesMoisField.getText().trim());
+        
+        // Handle montant field
+        String montantText = montantField.getText().trim();
+        if (!montantText.isEmpty()) {
+            try {
+                c.setMontant(Double.parseDouble(montantText));
+            } catch (NumberFormatException e) {
+                c.setMontant(null);
+            }
+        } else {
+            c.setMontant(null);
+        }
+        
+        // Set contact information
+        c.setPhone(phoneField.getText().trim());
+        c.setEmail(emailField.getText().trim());
+        c.setCompany(companyField.getText().trim());
+        c.setAddress(addressField.getText().trim());
+        c.setType(typeField.getText().trim());
+        c.setPremierVersement(premierVersementField.getText().trim());
+        
+        // Set timestamps
+        if (client == null) {
+            // New client - set creation time
+            String currentDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            c.setCreatedAt(currentDate);
+            c.setUpdatedAt(currentDate);
+        } else {
+            // Existing client - only update modification time
+            c.setUpdatedAt(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE));
+        }
+
+        return c;
+    }
+}
             return;
         }
 
